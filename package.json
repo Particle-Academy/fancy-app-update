@@ -1,6 +1,6 @@
 {
   "name": "@particle-academy/fancy-app-update",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic 'a new version is available — refresh' detector for any React app. Detect a redeploy (changed build) while the page is open and prompt a refresh. No Inertia, no PHP, no backend required — bring your own API, a version string, or just poll the page's ETag.",
   "repository": {
     "type": "git",
