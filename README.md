@@ -1,6 +1,6 @@
-<p align="left"><img src="./art/fancy-ui.svg" alt="Fancy UI" height="28"></p>
-
 # @particle-academy/fancy-app-update
+
+[![Fancified](art/fancified.svg)](https://particle.academy)
 
 **"A new version is available — refresh" for any React app.**
 
