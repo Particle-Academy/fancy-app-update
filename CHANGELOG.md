@@ -15,6 +15,29 @@ upgrading.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-20
+
+Nothing in this release changes what you already use: `AppUpdateAlert` and
+`useAppUpdate` behave as before. **Nothing to do** unless you want the new notice.
+
+### Added
+
+- **`AppUpdateStack`, at `@particle-academy/fancy-app-update/stack`: a refresh
+  notice that can say what is new.** The release's feature cards stack behind
+  each other like react-fancy's `Toast.Stack` (scroll or arrow keys walk through
+  them), each with a close button and a "Refresh to get the latest" button.
+  - A feature's `image` runs full width as the card's header.
+  - `features` is an array, or a loader called once when an update is
+    detected. With no features (a hotfix), or a loader that returns nothing or
+    fails, it shows the plain refresh notice.
+  - Every label, the button colour, `className` / `cardClassName`, the position
+    (the six presets, `"inline"`, or your own `style` over them), a card's
+    content (`renderFeature`) and the whole notice (`render`) can be replaced.
+  - Same detection options as `AppUpdateAlert`.
+- **`@particle-academy/react-fancy` is an OPTIONAL peer** (`>=5.41.0 <6.0.0`),
+  needed only by the `/stack` entry. The package root still imports nothing but
+  React. **What to do:** install react-fancy if you use `AppUpdateStack`.
+
 ### Fixed
 
 - **`CHANGELOG.md` is now in the published tarball.** `files` did not whitelist it, so npm never shipped it — and this package puts breaking changes in MINOR releases and tells you in the README to read the entry before taking one. The instruction existed for the author, who has the file, and not for the consumer, who is the only one being instructed. Nothing for you to do; the file simply arrives from this release on.

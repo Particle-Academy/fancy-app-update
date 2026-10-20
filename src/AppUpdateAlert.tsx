@@ -1,6 +1,9 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useAppUpdate, type UseAppUpdateOptions } from "./useAppUpdate";
+import { POSITION, type AppUpdateAlertPosition } from "./position";
+
+export type { AppUpdateAlertPosition };
 
 interface AppUpdateApi {
   /** Reload to pick up the new build (or your `onRefresh`). */
@@ -8,14 +11,6 @@ interface AppUpdateApi {
   /** Hide the prompt until the next page load. */
   dismiss: () => void;
 }
-
-export type AppUpdateAlertPosition =
-  | "bottom-right"
-  | "bottom-left"
-  | "top-right"
-  | "top-left"
-  | "bottom"
-  | "top";
 
 export interface AppUpdateAlertProps extends UseAppUpdateOptions {
   /** Heading. Default `"Update available"`. */
@@ -42,15 +37,6 @@ export interface AppUpdateAlertProps extends UseAppUpdateOptions {
   /** Alternate render-prop form of {@link render}. */
   children?: (api: AppUpdateApi) => ReactNode;
 }
-
-const POSITION: Record<AppUpdateAlertPosition, CSSProperties> = {
-  "bottom-right": { bottom: 16, right: 16 },
-  "bottom-left": { bottom: 16, left: 16 },
-  "top-right": { top: 16, right: 16 },
-  "top-left": { top: 16, left: 16 },
-  bottom: { bottom: 16, left: "50%", transform: "translateX(-50%)" },
-  top: { top: 16, left: "50%", transform: "translateX(-50%)" },
-};
 
 /**
  * Drop-in "a new version is available — refresh" prompt for any React app.

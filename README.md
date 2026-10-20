@@ -21,15 +21,15 @@ npm install @particle-academy/fancy-app-update
 
 ## Which version range to depend on
 
-**Use a caret. `^0.2.0` is correct here, and it is deliberate.**
+**Use a caret. `^0.3.0` is correct here, and it is deliberate.**
 
 ```jsonc
-"@particle-academy/fancy-app-update": "^0.2.0"
+"@particle-academy/fancy-app-update": "^0.3.0"
 ```
 
 This package is **pre-1.0, and breaking changes land in MINOR releases** — see
 the note at the top of [`CHANGELOG.md`](./CHANGELOG.md). A caret on a `0.x` locks
-the minor (npm reads `^0.2.0` as `>=0.2.0 <0.3.0`), so it gives you patches and
+the minor (npm reads `^0.3.0` as `>=0.3.0 <0.4.0`), so it gives you patches and
 holds you at a surface you have already integrated against. That is the right
 default when the next minor may change something under you.
 
@@ -113,6 +113,61 @@ validators on every deploy):
   )}
 />
 ```
+
+## Say what's new: the stacked notice
+
+`AppUpdateStack` shows the release's **feature cards**, stacked behind each other
+like react-fancy's `Toast.Stack`. Scroll over the stack, or use the arrow keys,
+to walk through them. Every card has a close button and a **Refresh to get the
+latest** button.
+
+It is a separate entry built from `@particle-academy/react-fancy` (an optional
+peer, `>=5.41.0`), so the package root stays dependency-free:
+
+```bash
+npm install @particle-academy/fancy-app-update @particle-academy/react-fancy
+```
+
+```tsx
+import { AppUpdateStack } from "@particle-academy/fancy-app-update/stack";
+
+<AppUpdateStack
+  features={[
+    { title: "Dark mode", description: "Every page, both modes.", image: "/whats-new/dark.png" },
+    { title: "Faster search" },
+  ]}
+/>
+```
+
+- **An update message is optional.** With no `features` (a hotfix) it shows the
+  plain refresh notice, as it does when a loader returns nothing or fails.
+- **`image`** runs full width as the card's header.
+- **`features` can be a loader**, called once, when an update is detected — fetch
+  the notes for the build that just landed:
+  `features={() => fetch("/whats-new.json").then((r) => r.json())}`.
+- **Close** hides the notice until the next page load (`onDismiss` tells you).
+
+Detection takes the same options as `<AppUpdateAlert>`. Everything a person sees
+can be changed:
+
+```tsx
+<AppUpdateStack
+  title="We shipped a fix"             // the plain notice (no features)
+  description="Nothing new, just better."
+  refreshLabel="Reload now"            // default "Refresh to get the latest"
+  closeLabel="Hide"                    // the close button's accessible name
+  color="emerald"                      // react-fancy colour of the refresh button
+  position="top"                       // the six positions above, or "inline"
+  style={{ top: 72 }}                  // merged over the position: put it anywhere
+  className="…" cardClassName="…"      // the notice, and each card
+  depth={2} offset={8}                 // cards shown behind, and how far they peek
+  renderFeature={(f, { index, count }) => <MyCard feature={f} />}   // a card's content
+  render={({ features, refresh, dismiss }) => <MyNotice />}        // the whole thing
+/>
+```
+
+The cards use react-fancy's styles, so Tailwind must scan its `dist` as for any
+react-fancy component.
 
 ## Headless hook
 

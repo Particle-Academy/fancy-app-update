@@ -1,6 +1,6 @@
 {
   "name": "@particle-academy/fancy-app-update",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Framework-agnostic 'a new version is available — refresh' detector for any React app. Detect a redeploy (changed build) while the page is open and prompt a refresh. No Inertia, no PHP, no backend required — bring your own API, a version string, or just poll the page's ETag.",
   "repository": {
     "type": "git",
@@ -21,6 +21,16 @@
       "require": {
         "types": "./dist/index.d.cts",
         "default": "./dist/index.cjs"
+      }
+    },
+    "./stack": {
+      "import": {
+        "types": "./dist/stack.d.ts",
+        "default": "./dist/stack.js"
+      },
+      "require": {
+        "types": "./dist/stack.d.cts",
+        "default": "./dist/stack.cjs"
       }
     },
     "./package.json": "./package.json"
@@ -55,9 +65,16 @@
   ],
   "peerDependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "@particle-academy/react-fancy": ">=5.41.0 <6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@particle-academy/react-fancy": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@particle-academy/react-fancy": "^5.50.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.0.0",
     "@types/react": "^19.2.18",
