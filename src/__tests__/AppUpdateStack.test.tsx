@@ -222,6 +222,147 @@ describe("AppUpdateStack", () => {
     expect(screen.getByRole("button", { name: "Refresh to get the latest" })).toBeTruthy();
   });
 
+  /*
+   * fancy-app-update#2 (MOIC): scroll-to-advance is not discoverable. Each
+   * feature card carries visible Previous / Next buttons beside its "N of M",
+   * and they move the SAME index the wheel and the arrow keys move.
+   * Testing-library's role queries skip the `aria-hidden` cards behind, so a
+   * button found by name is the front card's.
+   */
+  describe("Previous / Next", () => {
+    const count = () => front().querySelector("[data-fancy-app-update-count]")!.textContent;
+    const btn = (name: string) => screen.getByRole<HTMLButtonElement>("button", { name });
+    const stackEl = () => document.querySelector<HTMLElement>("[data-react-fancy-toast-stack]")!;
+
+    it("are on the front card, and walk the cards forwards and back", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      expect(front().contains(btn("Previous"))).toBe(true);
+      expect(front().contains(btn("Next"))).toBe(true);
+      expect(count()).toBe("1 of 3");
+
+      fireEvent.click(btn("Next"));
+      expect(count()).toBe("2 of 3");
+      expect(front().textContent).toContain("Faster search");
+
+      fireEvent.click(btn("Next"));
+      expect(count()).toBe("3 of 3");
+      expect(front().textContent).toContain("Exports to PDF");
+
+      fireEvent.click(btn("Previous"));
+      expect(count()).toBe("2 of 3");
+      expect(front().textContent).toContain("Faster search");
+    });
+
+    it("stop at the ends: Previous is disabled on the first card, Next on the last", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      expect(btn("Previous").disabled).toBe(true);
+      expect(btn("Next").disabled).toBe(false);
+      fireEvent.click(btn("Previous"));
+      expect(count()).toBe("1 of 3");
+
+      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("Next"));
+      expect(count()).toBe("3 of 3");
+      expect(btn("Next").disabled).toBe(true);
+      expect(btn("Previous").disabled).toBe(false);
+      fireEvent.click(btn("Next"));
+      expect(count()).toBe("3 of 3");
+    });
+
+    it("move the same card the arrow keys and the wheel move", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      fireEvent.click(btn("Next"));
+      expect(count()).toBe("2 of 3");
+      fireEvent.keyDown(stackEl(), { key: "ArrowDown" });
+      expect(count()).toBe("3 of 3");
+      // The buttons read the index the keys moved, so Next is now at its end.
+      expect(btn("Next").disabled).toBe(true);
+      fireEvent.click(btn("Previous"));
+      expect(count()).toBe("2 of 3");
+      fireEvent.wheel(stackEl(), { deltaY: -100 });
+      expect(count()).toBe("1 of 3");
+      expect(btn("Previous").disabled).toBe(true);
+    });
+
+    it("an arrow key on a focused button steps once, not twice", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      btn("Next").focus();
+      fireEvent.keyDown(btn("Next"), { key: "ArrowRight" });
+      expect(count()).toBe("2 of 3");
+    });
+
+    it("keep focus on the front card when it changes", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      btn("Next").focus();
+      fireEvent.click(btn("Next"));
+      // The card that held focus is now behind, and inert.
+      expect(document.activeElement).toBe(btn("Next"));
+      expect(front().contains(document.activeElement)).toBe(true);
+
+      // Next is disabled on the last card, so focus lands on Previous.
+      fireEvent.click(btn("Next"));
+      expect(count()).toBe("3 of 3");
+      expect(document.activeElement).toBe(btn("Previous"));
+
+      // An arrow key from a focused button keeps focus on the front card too.
+      fireEvent.keyDown(btn("Previous"), { key: "ArrowUp" });
+      expect(count()).toBe("2 of 3");
+      expect(document.activeElement).toBe(btn("Previous"));
+    });
+
+    it("take their labels from previousLabel / nextLabel", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} previousLabel="Back" nextLabel="Onward" />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      fireEvent.click(btn("Onward"));
+      expect(count()).toBe("2 of 3");
+      fireEvent.click(btn("Back"));
+      expect(count()).toBe("1 of 3");
+      expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    });
+
+    it("show from two cards, and are absent with one: the hotfix notice and a one-feature release", async () => {
+      // The positive half first, so this cannot pass on code that has no buttons at all.
+      render(<AppUpdateStack {...detected} features={FEATURES.slice(0, 2)} />);
+      await waitFor(() => expect(cards().length).toBe(2));
+      expect(btn("Previous")).toBeTruthy();
+      expect(btn("Next")).toBeTruthy();
+      cleanup();
+
+      render(<AppUpdateStack {...detected} />);
+      await waitFor(() => expect(cards().length).toBe(1));
+      expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+      cleanup();
+
+      render(<AppUpdateStack {...detected} features={FEATURES.slice(0, 1)} />);
+      await waitFor(() => expect(cards().length).toBe(1));
+      expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+    });
+
+    it("stay when renderFeature replaces a card's content", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} renderFeature={(f) => <p>{f.title}</p>} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      fireEvent.click(btn("Next"));
+      expect(front().textContent).toContain("Faster search");
+      expect(count()).toBe("2 of 3");
+      fireEvent.click(btn("Previous"));
+      expect(front().textContent).toContain("Dark mode");
+    });
+  });
+
   it("render replaces the whole notice and receives the features", async () => {
     render(
       <AppUpdateStack

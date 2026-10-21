@@ -3,13 +3,13 @@
  *
  * The stacked variant of the refresh prompt: when a new build lands, the
  * release's feature cards stack behind each other (react-fancy's `Toast.Stack`
- * -- scroll or arrow keys walk through them), each with a close button and a
- * "Refresh to get the latest" action.
+ * -- Previous / Next buttons, the wheel or the arrow keys walk through them),
+ * each with a close button and a "Refresh to get the latest" action.
  *
  * A separate entry because it is built from react-fancy, an OPTIONAL peer: the
  * package root stays dependency-free for apps that only want the detector.
  */
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Button, Portal, Toast, type ButtonColor } from "@particle-academy/react-fancy";
 import { useAppUpdate, type UseAppUpdateOptions } from "./useAppUpdate";
 import { POSITION, type AppUpdateAlertPosition } from "./position";
@@ -64,6 +64,10 @@ export interface AppUpdateStackProps extends UseAppUpdateOptions {
   refreshLabel?: ReactNode;
   /** The close button's accessible name. Default `"Close"`. */
   closeLabel?: string;
+  /** The button back to the previous feature card. Default `"Previous"`. Shown only with two or more cards. */
+  previousLabel?: string;
+  /** The button on to the next feature card. Default `"Next"`. Shown only with two or more cards. */
+  nextLabel?: string;
   /** react-fancy colour of the refresh button. Default `"violet"`. */
   color?: ButtonColor;
   /** A screen position, or `"inline"` to render where it is placed. Default `"bottom-right"`. */
@@ -84,11 +88,15 @@ export interface AppUpdateStackProps extends UseAppUpdateOptions {
   onRefresh?: () => void;
   /** Called when the person closes the notice. */
   onDismiss?: () => void;
-  /** Replace a feature card's content. The close and refresh controls stay. */
+  /** Replace a feature card's content. The close, refresh and Previous / Next controls stay. */
   renderFeature?: (feature: AppUpdateFeature, state: { index: number; count: number; isFront: boolean }) => ReactNode;
   /** Replace the whole notice. Only rendered when an update is available. */
   render?: (api: AppUpdateStackApi) => ReactNode;
 }
+
+/** Names each card control, so focus can follow it onto the next front card. */
+const CONTROL = "data-fancy-app-update-control";
+const FRONT_CARD = '[data-react-fancy-toast-stack-card="front"]';
 
 /** The card's own padding, so a header image can run edge to edge. */
 const PAD = 16;
@@ -125,6 +133,8 @@ export function AppUpdateStack({
   description = "A new version is ready.",
   refreshLabel = "Refresh to get the latest",
   closeLabel = "Close",
+  previousLabel = "Previous",
+  nextLabel = "Next",
   color = "violet",
   position = "bottom-right",
   style,
@@ -167,6 +177,43 @@ export function AppUpdateStack({
     };
   }, [updateAvailable]);
 
+  /*
+   * Which card is in front is OURS, handed to Toast.Stack, so the Previous /
+   * Next buttons, the wheel and the arrow keys all move one index. Toast.Stack
+   * wraps that index for display; `current` below is the same wrap.
+   */
+  const [rawFront, setRawFront] = useState(0);
+  const rootRef = useRef<HTMLDivElement>(null);
+  /** The control that held focus when the front card changed, to restore on the new one. */
+  const refocus = useRef<string | null>(null);
+
+  const moveTo = (index: number) => {
+    // Read focus NOW, while the event runs: once the card goes behind it is
+    // inert, and the browser drops its focus to <body> (or the card unmounts,
+    // with four or more features).
+    const root = rootRef.current;
+    const active = document.activeElement;
+    if (root && active instanceof HTMLElement && root.contains(active) && active.closest(FRONT_CARD)) {
+      refocus.current = active.getAttribute(CONTROL) ?? "";
+    }
+    setRawFront(index);
+  };
+
+  useLayoutEffect(() => {
+    const want = refocus.current;
+    if (want === null) return;
+    refocus.current = null;
+    const root = rootRef.current;
+    if (!root) return;
+    const card = root.querySelector(FRONT_CARD);
+    const pick = (name: string) => card?.querySelector<HTMLButtonElement>(`[${CONTROL}="${name}"]`) ?? null;
+    let target = want ? pick(want) : null;
+    // At an end the button just pressed is disabled and cannot hold focus; its
+    // partner is the one that still goes somewhere.
+    if (target?.disabled) target = pick(want === "next" ? "previous" : "next");
+    (target ?? root.querySelector<HTMLElement>("[data-react-fancy-toast-stack]"))?.focus();
+  }, [rawFront]);
+
   if (!updateAvailable || typeof document === "undefined") return null;
 
   const list: readonly AppUpdateFeature[] = loader ? loaded : ((features as readonly AppUpdateFeature[] | undefined) ?? []);
@@ -181,6 +228,7 @@ export function AppUpdateStack({
   const plain = list.length === 0;
   const items: AppUpdateFeature[] = plain ? [{ id: "update", title, description }] : [...list];
   const count = items.length;
+  const current = count === 0 ? 0 : ((rawFront % count) + count) % count;
 
   const content = (feature: AppUpdateFeature, index: number, isFront: boolean) => {
     const custom = !plain && renderFeature ? renderFeature(feature, { index, count, isFront }) : null;
@@ -211,13 +259,49 @@ export function AppUpdateStack({
                 </>
               )}
             </div>
-            <Button variant="ghost" size="xs" icon="x" aria-label={closeLabel} title={closeLabel} onClick={close} />
+            <Button
+              variant="ghost"
+              size="xs"
+              icon="x"
+              aria-label={closeLabel}
+              title={closeLabel}
+              onClick={close}
+              {...{ [CONTROL]: "close" }}
+            />
           </div>
+          {count > 1 ? (
+            // Walking the cards by button as well as by wheel and arrow keys
+            // (fancy-app-update#2): scroll-to-advance is not discoverable. They
+            // stop at the ends, so "1 of 3" has nowhere to go back to.
+            <div data-fancy-app-update-nav="" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Button
+                variant="ghost"
+                size="xs"
+                icon="chevron-left"
+                disabled={index === 0}
+                onClick={() => moveTo(index - 1)}
+                {...{ [CONTROL]: "previous" }}
+              >
+                {previousLabel}
+              </Button>
+              <span
+                data-fancy-app-update-count=""
+                style={{ flex: 1, textAlign: "center", fontSize: 12, opacity: 0.6 }}
+              >{`${index + 1} of ${count}`}</span>
+              <Button
+                variant="ghost"
+                size="xs"
+                iconTrailing="chevron-right"
+                disabled={index === count - 1}
+                onClick={() => moveTo(index + 1)}
+                {...{ [CONTROL]: "next" }}
+              >
+                {nextLabel}
+              </Button>
+            </div>
+          ) : null}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {count > 1 ? (
-              <span data-fancy-app-update-count="" style={{ fontSize: 12, opacity: 0.6 }}>{`${index + 1} of ${count}`}</span>
-            ) : null}
-            <Button size="sm" color={color} onClick={doRefresh} style={{ marginLeft: "auto" }}>
+            <Button size="sm" color={color} onClick={doRefresh} style={{ marginLeft: "auto" }} {...{ [CONTROL]: "refresh" }}>
               {refreshLabel}
             </Button>
           </div>
@@ -235,6 +319,10 @@ export function AppUpdateStack({
       items={items}
       getKey={(f, i) => f.id ?? String(i)}
       renderItem={(f, { index, isFront }) => content(f, index, isFront)}
+      frontIndex={current}
+      onFrontIndexChange={(i) => {
+        if (i !== current) moveTo(i);
+      }}
       position="inline"
       label={label}
       depth={depth}
@@ -247,7 +335,7 @@ export function AppUpdateStack({
 
   if (position === "inline") {
     return (
-      <div data-fancy-app-update-stack="" data-position="inline" style={style}>
+      <div ref={rootRef} data-fancy-app-update-stack="" data-position="inline" style={style}>
         {stack}
       </div>
     );
@@ -256,6 +344,7 @@ export function AppUpdateStack({
   return (
     <Portal>
       <div
+        ref={rootRef}
         data-fancy-app-update-stack=""
         data-position={position}
         style={{ position: "fixed", zIndex: 2147483000, maxWidth: "min(92vw, 24rem)", ...POSITION[position], ...style }}

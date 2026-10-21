@@ -117,9 +117,10 @@ validators on every deploy):
 ## Say what's new: the stacked notice
 
 `AppUpdateStack` shows the release's **feature cards**, stacked behind each other
-like react-fancy's `Toast.Stack`. Scroll over the stack, or use the arrow keys,
-to walk through them. Every card has a close button and a **Refresh to get the
-latest** button.
+like react-fancy's `Toast.Stack`. With two or more cards, each one has
+**Previous** and **Next** buttons beside its "1 of 3"; scrolling over the stack
+and the arrow keys walk through them too. Every card has a close button and a
+**Refresh to get the latest** button.
 
 It is a separate entry built from `@particle-academy/react-fancy` (an optional
 peer, `>=5.41.0`), so the package root stays dependency-free:
@@ -151,6 +152,11 @@ import { AppUpdateStack } from "@particle-academy/fancy-app-update/stack";
 - **`features` can be a loader**, called once, when an update is detected — fetch
   the notes for the build that just landed:
   `features={() => fetch("/whats-new.json").then((r) => r.json())}`.
+- **Previous / Next** stop at the ends: Previous is disabled on the first card
+  and Next on the last, so "1 of 3" never steps back to 3. The wheel and the
+  arrow keys still wrap, as `Toast.Stack` does. All three move the same card,
+  and focus stays on the front card when it changes. A single card (the hotfix
+  notice, or a one-feature release) has no buttons.
 - **Close** hides the notice until the next page load (`onDismiss` tells you).
 
 Detection takes the same options as `<AppUpdateAlert>`. Everything a person sees
@@ -162,12 +168,14 @@ can be changed:
   description="Nothing new, just better."
   refreshLabel="Reload now"            // default "Refresh to get the latest"
   closeLabel="Hide"                    // the close button's accessible name
+  previousLabel="Back"                 // default "Previous"
+  nextLabel="Onward"                   // default "Next"
   color="emerald"                      // react-fancy colour of the refresh button
   position="top"                       // the six positions above, or "inline"
   style={{ top: 72 }}                  // merged over the position: put it anywhere
   className="…" cardClassName="…"      // the notice, and each card
   depth={2} offset={8}                 // cards shown behind, and how far they peek
-  renderFeature={(f, { index, count }) => <MyCard feature={f} />}   // a card's content
+  renderFeature={(f, { index, count }) => <MyCard feature={f} />}   // a card's content; the controls stay
   render={({ features, refresh, dismiss }) => <MyNotice />}        // the whole thing
 />
 ```

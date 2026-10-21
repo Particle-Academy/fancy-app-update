@@ -15,6 +15,38 @@ upgrading.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-21
+
+**Nothing to do.** A notice with one card, or the plain hotfix notice, renders
+exactly as before; scrolling and the arrow keys still walk the cards.
+
+### Added
+
+- **Previous / Next buttons on each feature card** (fancy-app-update#2).
+  Scroll-to-advance is not discoverable, so with two or more cards each one
+  now carries Previous and Next beside its "1 of 3". They are react-fancy
+  `Button`s with chevrons.
+  - **They stop at the ends**: Previous is disabled on the first card and Next
+    on the last, so "1 of 3" never steps back to "3 of 3". The wheel and the
+    arrow keys still wrap, as `Toast.Stack` does.
+  - The buttons, the wheel and the arrow keys move the same card -- the stack's
+    front index is now held by `AppUpdateStack` and handed to `Toast.Stack` --
+    so an arrow key on a focused button steps once.
+  - **Focus stays on the front card** when it changes. The card that held it
+    goes behind (and inert), so focus moves to the same control on the new front
+    card; at an end, where that button is now disabled, to its partner.
+  - `previousLabel` / `nextLabel` change the words (defaults `"Previous"` /
+    `"Next"`), like `refreshLabel` and `closeLabel`.
+  - A `renderFeature` override keeps them, as it keeps close and refresh.
+  - The card's controls carry `data-fancy-app-update-control` (`"previous"`,
+    `"next"`, `"close"`, `"refresh"`); the button row is
+    `data-fancy-app-update-nav`.
+
+### Changed
+
+- With two or more cards, the "N of M" count moves into the new button row,
+  between Previous and Next, and the refresh button sits on its own row below.
+
 ## [0.4.0] - 2026-10-20
 
 **Nothing to do.** A card with only `image` renders exactly as before.
