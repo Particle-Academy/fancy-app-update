@@ -15,6 +15,37 @@ upgrading.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-10-21
+
+**Nothing to do on upgrade.** `AppUpdateStack` is deprecated, not changed: every
+prop works as it did and its DOM, handles and defaults are identical (its whole
+0.6.0 suite passes unmodified on the new internals).
+
+### Added
+
+- **`FeatureCards`, on the new `./cards` entry**: the feature-card presenter on
+  its own (stacked cards on react-fancy's `Toast.Stack`, prev / next links, the
+  scroll hint, `imageDark`, data-* handles), with no detector. It is what
+  `AppUpdateStack` renders, and what `@particle-academy/fancy-whats-new` builds
+  on, so the two notices share one card instead of two copies. New over the
+  0.6.0 card: a `namespace` for the handles / stylesheet / keyframes (default
+  `"fancy-app-update"`), a per-card `eyebrow` line above the title, per-card and
+  root `attributes`, an optional `action`, and `resetKey`. Same optional
+  react-fancy peer as `./stack` (`>=5.41.0`); the package root still imports
+  nothing but React.
+
+### Deprecated
+
+- **`AppUpdateStack` (`./stack`), in favour of
+  `@particle-academy/fancy-whats-new`.** Feature cards on a refresh notice
+  describe features the open page does not have yet, cover only the build that
+  landed mid-session, and remember nothing about what a person already saw.
+  `<WhatsNew>` shows them on the first load after the refresh, for every release
+  missed, once, on the same cards. This package goes back to its one job: detect
+  a new build, show the plain refresh notice (`AppUpdateAlert`). Marked with
+  JSDoc `@deprecated`, so editors strike it through; **nothing is removed**, and
+  there is no date for removal.
+
 ## [0.6.0] - 2026-10-21
 
 **BREAKING, for one hour's worth of consumers: the default prev / next words

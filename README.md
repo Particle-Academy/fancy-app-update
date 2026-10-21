@@ -116,6 +116,20 @@ validators on every deploy):
 
 ## Say what's new: the stacked notice
 
+> **Deprecated since 0.7.0 — use
+> [`@particle-academy/fancy-whats-new`](https://github.com/Particle-Academy/fancy-whats-new)
+> for feature cards.** Cards on a *refresh* notice describe features the open
+> page does not have yet, cover only the one build that landed mid-session, and
+> remember nothing about what a person has already seen. `<WhatsNew>` shows them
+> on the first load **after** the refresh, for every release the person missed,
+> once. It is built on the same cards (see [Shared cards](#shared-cards-cards)
+> below), so it looks the same. This package goes back to its one job: detect a
+> new build and show the plain refresh notice, `<AppUpdateAlert>`.
+>
+> **Nothing is removed and nothing changes on upgrade.** `AppUpdateStack` and
+> every prop below keep working; it is marked `@deprecated` so your editor says
+> where to go next.
+
 `AppUpdateStack` shows the release's **feature cards**, stacked behind each other
 like react-fancy's `Toast.Stack`. With two or more cards, each one has quiet
 **prev** and **next** links beside its "1 of 3"; scrolling over the stack and
@@ -222,6 +236,33 @@ can be changed:
 
 The cards use react-fancy's styles, so Tailwind must scan its `dist` as for any
 react-fancy component.
+
+## Shared cards (`./cards`)
+
+`FeatureCards` is the card presenter on its own: the stacked cards, prev / next
+links, the scroll hint, the per-theme header image and the data-* handles, with
+no detector behind it. `AppUpdateStack` is built on it, and so is
+`@particle-academy/fancy-whats-new`. You only need it to build a notice of your
+own.
+
+```tsx
+import { FeatureCards } from "@particle-academy/fancy-app-update/cards";
+
+<FeatureCards
+  cards={[{ title: "Dark mode", eyebrow: "v1.4.0", image: "/new/light.png", imageDark: "/new/dark.png" }]}
+  action={{ label: "got it", onClick: close, control: "dismiss" }}
+  onClose={close}
+  namespace="my-notice"          // data-my-notice-card, data-my-notice-control, ...
+/>
+```
+
+- **`namespace`** prefixes every handle, the stylesheet and the keyframes
+  (default `"fancy-app-update"`), so two notices on one page never share a
+  selector and an agent reading one is not told it is the other.
+- **`eyebrow`** is a small line above a card's title; **`attributes`** puts
+  `data-*` attributes on a card (or, on the component, on the notice's root).
+- **`resetKey`**: change it to go back to the first card.
+- Same react-fancy peer as `./stack` (`>=5.41.0`).
 
 ## Headless hook
 
