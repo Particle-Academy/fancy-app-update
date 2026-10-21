@@ -142,6 +142,12 @@ import { AppUpdateStack } from "@particle-academy/fancy-app-update/stack";
 - **An update message is optional.** With no `features` (a hotfix) it shows the
   plain refresh notice, as it does when a loader returns nothing or fails.
 - **`image`** runs full width as the card's header.
+- **`imageDark`** is shown instead of `image` in dark mode, so someone in dark
+  mode sees a dark screenshot: `{ image: "/new/light.png", imageDark: "/new/dark.png" }`.
+  Dark mode is the `.dark` class on an ancestor, the kit's convention. The swap
+  is plain CSS the notice brings with it, so it is right on the first paint,
+  follows a live theme toggle, and needs nothing from your Tailwind build.
+  `imageAlt` serves both.
 - **`features` can be a loader**, called once, when an update is detected — fetch
   the notes for the build that just landed:
   `features={() => fetch("/whats-new.json").then((r) => r.json())}`.

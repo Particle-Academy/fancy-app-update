@@ -62,6 +62,85 @@ describe("AppUpdateStack", () => {
     expect(front().textContent).toContain("2 of 3");
   });
 
+  /*
+   * fancy-app-update#1 (MOIC), the nice-to-have: a release can show a dark
+   * screenshot to someone in dark mode. The kit's dark mode is the `.dark`
+   * class on an ancestor, so the swap is CSS keyed off that class -- no JS, so
+   * it is right on the first paint and follows a theme toggle live. jsdom
+   * cascades `display` from a stylesheet, so this checks the swap itself.
+   */
+  describe("imageDark", () => {
+    const THEMED: AppUpdateFeature[] = [
+      { id: "a", title: "Dark mode", image: "/img/light.png", imageDark: "/img/dark.png", imageAlt: "Preview" },
+      { id: "b", title: "Faster search" },
+    ];
+    const header = (theme: "light" | "dark") =>
+      front().querySelector<HTMLImageElement>(`img[data-fancy-app-update-image="${theme}"]`)!;
+    const shown = (el: HTMLElement) => getComputedStyle(el).display !== "none";
+
+    afterEach(() => document.documentElement.classList.remove("dark"));
+
+    it("renders both headers with the same alt, and shows the light one outside dark mode", async () => {
+      render(<AppUpdateStack {...detected} features={THEMED} />);
+      await waitFor(() => expect(cards().length).toBe(2));
+
+      expect(header("light").getAttribute("src")).toBe("/img/light.png");
+      expect(header("dark").getAttribute("src")).toBe("/img/dark.png");
+      expect(header("light").getAttribute("alt")).toBe("Preview");
+      expect(header("dark").getAttribute("alt")).toBe("Preview");
+      // An inline display would beat the stylesheet and pin one image on.
+      expect(header("light").style.display).toBe("");
+      expect(header("dark").style.display).toBe("");
+
+      expect(shown(header("light"))).toBe(true);
+      expect(shown(header("dark"))).toBe(false);
+    });
+
+    /*
+     * The theme is set BEFORE render in every case here. jsdom invalidates its
+     * computed-style cache on child-list, text and stylesheet changes but NOT
+     * on an attribute change, so toggling `.dark` mid-test reads a stale
+     * `display` depending on what an earlier test computed. A live toggle is a
+     * browser behaviour; it is checked in a real browser, not here.
+     */
+    it("shows the dark one instead under a `.dark` ancestor", async () => {
+      document.documentElement.classList.add("dark");
+      render(<AppUpdateStack {...detected} features={THEMED} />);
+      await waitFor(() => expect(cards().length).toBe(2));
+
+      expect(shown(header("dark"))).toBe(true);
+      expect(shown(header("light"))).toBe(false);
+    });
+
+    it("a card with only `image` is unchanged: one header, in both themes", async () => {
+      document.documentElement.classList.add("dark");
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      const imgs = front().querySelectorAll<HTMLImageElement>("img[data-fancy-app-update-image]");
+      expect(imgs).toHaveLength(1);
+      expect(shown(imgs[0])).toBe(true);
+    });
+
+    const onlyDark: AppUpdateFeature[] = [{ id: "a", title: "Dark mode", imageDark: "/img/dark.png" }];
+
+    it("a card with only `imageDark` has no header in light mode", async () => {
+      render(<AppUpdateStack {...detected} features={onlyDark} />);
+      await waitFor(() => expect(cards().length).toBe(1));
+
+      expect(front().querySelector('img[data-fancy-app-update-image="light"]')).toBeNull();
+      expect(shown(header("dark"))).toBe(false);
+    });
+
+    it("a card with only `imageDark` has its header in dark mode", async () => {
+      document.documentElement.classList.add("dark");
+      render(<AppUpdateStack {...detected} features={onlyDark} />);
+      await waitFor(() => expect(cards().length).toBe(1));
+
+      expect(shown(header("dark"))).toBe(true);
+    });
+  });
+
   it("loads the update message only once an update is detected", async () => {
     const load = vi.fn(async () => FEATURES.slice(0, 2));
     render(<AppUpdateStack check={() => false} interval={5} pollOnFocus={false} features={load} />);

@@ -32,6 +32,15 @@ envelope's `RULES.md`.
   (`p-0 overflow-hidden` merged into `cardClassName`) and the body pads itself.
   Those two classes are ones react-fancy's dist already contains, so a consumer
   scanning react-fancy generates them.
+- **Any class this package uses must already be in react-fancy's dist**, because
+  that is the only dist a consumer's Tailwind scans. `imageDark`'s light/dark
+  swap is NOT Tailwind for that reason: `dark:hidden` / `dark:block` are not in
+  react-fancy (checked 2026-10-20), so it is a small `<style>` keyed off `.dark`
+  (`THEME_IMAGE_CSS` in `src/stack.tsx`). The themed images carry no inline
+  `display`, which would beat the stylesheet.
+- **jsdom does not invalidate computed styles on an attribute change**, only on
+  child-list / text / stylesheet changes. Set `.dark` BEFORE rendering in a
+  test; a mid-test toggle reads a stale `display`.
 
 ## Checking a change
 

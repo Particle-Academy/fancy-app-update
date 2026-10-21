@@ -22,6 +22,14 @@ export interface AppUpdateFeature {
   description?: ReactNode;
   /** Shown full width as the card's header. */
   image?: string;
+  /**
+   * Shown instead of `image` in dark mode -- the `.dark` class on an ancestor,
+   * the kit's convention. CSS-only, so it is right on the first paint and
+   * follows a live theme toggle. With no `image`, the card has a header in dark
+   * mode only.
+   */
+  imageDark?: string;
+  /** Alt text for the header, whichever image is showing. */
   imageAlt?: string;
 }
 
@@ -84,6 +92,23 @@ export interface AppUpdateStackProps extends UseAppUpdateOptions {
 
 /** The card's own padding, so a header image can run edge to edge. */
 const PAD = 16;
+
+/** The header image's box. No `display` here: on a themed pair the stylesheet owns it. */
+const IMAGE_STYLE: CSSProperties = { width: "100%", height: "auto", maxHeight: 180, objectFit: "cover" };
+
+/*
+ * The per-theme header swap, keyed off the kit's `.dark` class on an ancestor.
+ * A stylesheet rather than Tailwind's `dark:hidden` / `dark:block`, because a
+ * consumer's Tailwind scans react-fancy's dist and not this package's, and
+ * those two classes are not in react-fancy -- the dark variants would never be
+ * generated and the dark image would never show. Plain CSS needs nothing from
+ * the consumer's build. Rendered only when some card has an `imageDark`.
+ */
+const THEME_IMAGE_CSS =
+  '[data-fancy-app-update-image="light"]{display:block}' +
+  '[data-fancy-app-update-image="dark"]{display:none}' +
+  '.dark [data-fancy-app-update-image="light"]{display:none}' +
+  '.dark [data-fancy-app-update-image="dark"]{display:block}';
 
 /**
  * Drop-in "a new version is available" notice that can say what is new.
@@ -161,12 +186,19 @@ export function AppUpdateStack({
     const custom = !plain && renderFeature ? renderFeature(feature, { index, count, isFront }) : null;
     return (
       <div data-fancy-app-update-card="">
-        {!custom && feature.image ? (
+        {!custom && feature.imageDark ? (
+          <>
+            {feature.image ? (
+              <img data-fancy-app-update-image="light" src={feature.image} alt={feature.imageAlt ?? ""} style={IMAGE_STYLE} />
+            ) : null}
+            <img data-fancy-app-update-image="dark" src={feature.imageDark} alt={feature.imageAlt ?? ""} style={IMAGE_STYLE} />
+          </>
+        ) : !custom && feature.image ? (
           <img
             data-fancy-app-update-image=""
             src={feature.image}
             alt={feature.imageAlt ?? ""}
-            style={{ display: "block", width: "100%", height: "auto", maxHeight: 180, objectFit: "cover" }}
+            style={{ display: "block", ...IMAGE_STYLE }}
           />
         ) : null}
         <div style={{ padding: PAD, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -194,7 +226,11 @@ export function AppUpdateStack({
     );
   };
 
+  const themed = items.some((f) => f.imageDark);
+
   const stack = (
+    <>
+    {themed ? <style data-fancy-app-update-theme-images="">{THEME_IMAGE_CSS}</style> : null}
     <Toast.Stack
       items={items}
       getKey={(f, i) => f.id ?? String(i)}
@@ -206,6 +242,7 @@ export function AppUpdateStack({
       cardClassName={["p-0 overflow-hidden", cardClassName].filter(Boolean).join(" ")}
       className={className}
     />
+    </>
   );
 
   if (position === "inline") {

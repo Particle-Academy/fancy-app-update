@@ -15,6 +15,34 @@ upgrading.
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-10-20
+
+**Nothing to do.** A card with only `image` renders exactly as before.
+
+### Added
+
+- **`AppUpdateFeature.imageDark`: a per-theme header image** (fancy-app-update#1).
+  It is shown instead of `image` in dark mode -- the `.dark` class on an
+  ancestor, the kit's convention -- so a release can show a dark screenshot to
+  someone in dark mode instead of a bright light-mode block in a dark card.
+  `imageAlt` serves both. With no `image`, the card has a header in dark mode
+  only.
+  - The swap is a small stylesheet the notice renders (only when some card has
+    an `imageDark`), keyed off `.dark`. It is CSS, so it is right on the first
+    paint and follows a live theme toggle; and it is plain CSS rather than
+    Tailwind's `dark:hidden` / `dark:block`, because your Tailwind scans
+    react-fancy's dist and not this package's, and those classes are not in
+    react-fancy -- the dark image would never have shown.
+  - The two images carry `data-fancy-app-update-image="light"` / `"dark"`. A
+    single `image` keeps `data-fancy-app-update-image=""`.
+
+### Fixed
+
+- The "+N" count badge over the stacked cards is readable in dark mode over a
+  light image header. The fix is in react-fancy 5.51.1's `Toast.Stack`, which
+  this package renders; update react-fancy to get it. The peer range is
+  unchanged (`>=5.41.0 <6.0.0`).
+
 ## [0.3.0] - 2026-10-20
 
 Nothing in this release changes what you already use: `AppUpdateAlert` and
