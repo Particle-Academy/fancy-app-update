@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { useState } from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AppUpdateStack, type AppUpdateFeature } from "../stack";
 
@@ -238,19 +239,19 @@ describe("AppUpdateStack", () => {
       render(<AppUpdateStack {...detected} features={FEATURES} />);
       await waitFor(() => expect(cards().length).toBe(3));
 
-      expect(front().contains(btn("Previous"))).toBe(true);
-      expect(front().contains(btn("Next"))).toBe(true);
+      expect(front().contains(btn("prev"))).toBe(true);
+      expect(front().contains(btn("next"))).toBe(true);
       expect(count()).toBe("1 of 3");
 
-      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("next"));
       expect(count()).toBe("2 of 3");
       expect(front().textContent).toContain("Faster search");
 
-      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("next"));
       expect(count()).toBe("3 of 3");
       expect(front().textContent).toContain("Exports to PDF");
 
-      fireEvent.click(btn("Previous"));
+      fireEvent.click(btn("prev"));
       expect(count()).toBe("2 of 3");
       expect(front().textContent).toContain("Faster search");
     });
@@ -259,17 +260,17 @@ describe("AppUpdateStack", () => {
       render(<AppUpdateStack {...detected} features={FEATURES} />);
       await waitFor(() => expect(cards().length).toBe(3));
 
-      expect(btn("Previous").disabled).toBe(true);
-      expect(btn("Next").disabled).toBe(false);
-      fireEvent.click(btn("Previous"));
+      expect(btn("prev").disabled).toBe(true);
+      expect(btn("next").disabled).toBe(false);
+      fireEvent.click(btn("prev"));
       expect(count()).toBe("1 of 3");
 
-      fireEvent.click(btn("Next"));
-      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("next"));
+      fireEvent.click(btn("next"));
       expect(count()).toBe("3 of 3");
-      expect(btn("Next").disabled).toBe(true);
-      expect(btn("Previous").disabled).toBe(false);
-      fireEvent.click(btn("Next"));
+      expect(btn("next").disabled).toBe(true);
+      expect(btn("prev").disabled).toBe(false);
+      fireEvent.click(btn("next"));
       expect(count()).toBe("3 of 3");
     });
 
@@ -277,25 +278,25 @@ describe("AppUpdateStack", () => {
       render(<AppUpdateStack {...detected} features={FEATURES} />);
       await waitFor(() => expect(cards().length).toBe(3));
 
-      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("next"));
       expect(count()).toBe("2 of 3");
       fireEvent.keyDown(stackEl(), { key: "ArrowDown" });
       expect(count()).toBe("3 of 3");
       // The buttons read the index the keys moved, so Next is now at its end.
-      expect(btn("Next").disabled).toBe(true);
-      fireEvent.click(btn("Previous"));
+      expect(btn("next").disabled).toBe(true);
+      fireEvent.click(btn("prev"));
       expect(count()).toBe("2 of 3");
       fireEvent.wheel(stackEl(), { deltaY: -100 });
       expect(count()).toBe("1 of 3");
-      expect(btn("Previous").disabled).toBe(true);
+      expect(btn("prev").disabled).toBe(true);
     });
 
     it("an arrow key on a focused button steps once, not twice", async () => {
       render(<AppUpdateStack {...detected} features={FEATURES} />);
       await waitFor(() => expect(cards().length).toBe(3));
 
-      btn("Next").focus();
-      fireEvent.keyDown(btn("Next"), { key: "ArrowRight" });
+      btn("next").focus();
+      fireEvent.keyDown(btn("next"), { key: "ArrowRight" });
       expect(count()).toBe("2 of 3");
     });
 
@@ -303,21 +304,21 @@ describe("AppUpdateStack", () => {
       render(<AppUpdateStack {...detected} features={FEATURES} />);
       await waitFor(() => expect(cards().length).toBe(3));
 
-      btn("Next").focus();
-      fireEvent.click(btn("Next"));
+      btn("next").focus();
+      fireEvent.click(btn("next"));
       // The card that held focus is now behind, and inert.
-      expect(document.activeElement).toBe(btn("Next"));
+      expect(document.activeElement).toBe(btn("next"));
       expect(front().contains(document.activeElement)).toBe(true);
 
       // Next is disabled on the last card, so focus lands on Previous.
-      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("next"));
       expect(count()).toBe("3 of 3");
-      expect(document.activeElement).toBe(btn("Previous"));
+      expect(document.activeElement).toBe(btn("prev"));
 
       // An arrow key from a focused button keeps focus on the front card too.
-      fireEvent.keyDown(btn("Previous"), { key: "ArrowUp" });
+      fireEvent.keyDown(btn("prev"), { key: "ArrowUp" });
       expect(count()).toBe("2 of 3");
-      expect(document.activeElement).toBe(btn("Previous"));
+      expect(document.activeElement).toBe(btn("prev"));
     });
 
     it("take their labels from previousLabel / nextLabel", async () => {
@@ -328,38 +329,274 @@ describe("AppUpdateStack", () => {
       expect(count()).toBe("2 of 3");
       fireEvent.click(btn("Back"));
       expect(count()).toBe("1 of 3");
-      expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "next" })).toBeNull();
     });
 
     it("show from two cards, and are absent with one: the hotfix notice and a one-feature release", async () => {
       // The positive half first, so this cannot pass on code that has no buttons at all.
       render(<AppUpdateStack {...detected} features={FEATURES.slice(0, 2)} />);
       await waitFor(() => expect(cards().length).toBe(2));
-      expect(btn("Previous")).toBeTruthy();
-      expect(btn("Next")).toBeTruthy();
+      expect(btn("prev")).toBeTruthy();
+      expect(btn("next")).toBeTruthy();
       cleanup();
 
       render(<AppUpdateStack {...detected} />);
       await waitFor(() => expect(cards().length).toBe(1));
-      expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+      // By the control, not the word, so a label change cannot make this pass.
+      expect(document.querySelector("[data-fancy-app-update-nav]")).toBeNull();
+      expect(document.querySelector('[data-fancy-app-update-control="next"]')).toBeNull();
       cleanup();
 
       render(<AppUpdateStack {...detected} features={FEATURES.slice(0, 1)} />);
       await waitFor(() => expect(cards().length).toBe(1));
-      expect(screen.queryByRole("button", { name: "Previous" })).toBeNull();
-      expect(screen.queryByRole("button", { name: "Next" })).toBeNull();
+      expect(document.querySelector("[data-fancy-app-update-nav]")).toBeNull();
+      expect(document.querySelector('[data-fancy-app-update-control="previous"]')).toBeNull();
+    });
+
+    /*
+     * The owner's direction for 0.6.0: prev / next are small lowercase LINKS,
+     * not buttons in the button style -- but still real <button>s, so they are
+     * reachable by Tab and work with Enter / Space. The underline-on-hover is a
+     * rule in the notice's own stylesheet (not a Tailwind class react-fancy's
+     * dist may lack); jsdom cannot hover, so the browser checks the look.
+     */
+    it("are small lowercase links that are still real buttons", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      for (const b of [btn("prev"), btn("next")]) {
+        expect(b.tagName).toBe("BUTTON");
+        expect(b.getAttribute("type")).toBe("button");
+        expect(b.hasAttribute("data-fancy-app-update-link")).toBe(true);
+        // No button chrome: no padding box, no fill.
+        expect(b.style.padding).toBe("0px");
+        expect(b.style.background).toContain("transparent");
+      }
+      const css = document.querySelector("style[data-fancy-app-update-css]")!.textContent!;
+      expect(css).toContain("[data-fancy-app-update-link]:not(:disabled):hover");
+      expect(css).toContain("text-decoration:underline");
+      // Button's focus ring hugs a padding-less link: off for pointer focus
+      // (focus follows the control after a click), kept for the keyboard.
+      expect(css).toContain("[data-fancy-app-update-link]:focus:not(:focus-visible){box-shadow:none}");
     });
 
     it("stay when renderFeature replaces a card's content", async () => {
       render(<AppUpdateStack {...detected} features={FEATURES} renderFeature={(f) => <p>{f.title}</p>} />);
       await waitFor(() => expect(cards().length).toBe(3));
 
-      fireEvent.click(btn("Next"));
+      fireEvent.click(btn("next"));
       expect(front().textContent).toContain("Faster search");
       expect(count()).toBe("2 of 3");
-      fireEvent.click(btn("Previous"));
+      fireEvent.click(btn("prev"));
       expect(front().textContent).toContain("Dark mode");
+    });
+  });
+
+  /*
+   * The owner's direction for 0.6.0: a watermark that says the stack scrolls.
+   * It fades in when the pointer enters, stays briefly, and fades out on its
+   * own. The fade is a CSS animation keyed off a data attribute, in the
+   * notice's own stylesheet -- jsdom does not run animations, so the fade
+   * itself is checked in a real browser. What jsdom CAN see is checked here.
+   */
+  describe("scroll hint", () => {
+    const hint = () => document.querySelector<HTMLElement>("[data-fancy-app-update-scroll-hint]");
+    const root = () => document.querySelector<HTMLElement>("[data-fancy-app-update-stack]")!;
+    const css = () => document.querySelector("style[data-fancy-app-update-css]")!.textContent!;
+
+    it("appears on the front card when the pointer enters a stack of two or more", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      expect(hint()).toBeNull();
+
+      fireEvent.pointerEnter(root());
+      expect(hint()).not.toBeNull();
+      expect(front().contains(hint())).toBe(true);
+      expect(hint()!.getAttribute("data-fancy-app-update-scroll-hint")).toBe("show");
+      expect(hint()!.textContent).toContain("scroll");
+    });
+
+    it("never blocks a click, shifts nothing and is not read out", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.pointerEnter(root());
+
+      expect(hint()!.style.pointerEvents).toBe("none");
+      expect(hint()!.style.position).toBe("absolute");
+      expect(hint()!.getAttribute("aria-hidden")).toBe("true");
+    });
+
+    it("fades by a keyframe animation, and does not move under prefers-reduced-motion", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+
+      expect(css()).toContain("@keyframes fancy-app-update-scroll-hint");
+      expect(css()).toContain('[data-fancy-app-update-scroll-hint="show"]');
+      expect(css()).toContain("@media (prefers-reduced-motion: reduce)");
+    });
+
+    it("does not appear with one card", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES.slice(0, 1)} />);
+      await waitFor(() => expect(cards().length).toBe(1));
+      fireEvent.pointerEnter(root());
+      expect(hint()).toBeNull();
+      // ...while a two-card stack does, so this is not passing for want of a hint at all.
+      cleanup();
+      render(<AppUpdateStack {...detected} features={FEATURES.slice(0, 2)} />);
+      await waitFor(() => expect(cards().length).toBe(2));
+      fireEvent.pointerEnter(root());
+      expect(hint()).not.toBeNull();
+    });
+
+    it("scrollHint={false} turns it off; a string replaces its words", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} scrollHint="scroll to browse" />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.pointerEnter(root());
+      expect(hint()!.textContent).toContain("scroll to browse");
+      cleanup();
+
+      render(<AppUpdateStack {...detected} features={FEATURES} scrollHint={false} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.pointerEnter(root());
+      expect(hint()).toBeNull();
+    });
+
+    it("goes away once the person has moved through the cards", async () => {
+      render(<AppUpdateStack {...detected} features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.pointerEnter(root());
+      expect(hint()).not.toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "next" }));
+      expect(hint()).toBeNull();
+    });
+  });
+
+  /*
+   * fancy-app-update#3 (MOIC): a "What's New" menu item re-opens the latest
+   * feature cards on demand. `open` shows the stack whether or not an update
+   * was detected; opened that way, with no update pending, there is nothing
+   * to reload, so "got it" replaces the refresh action.
+   */
+  describe("open on demand", () => {
+    const none = { check: () => false, interval: 5, pollOnFocus: false } as const;
+    const wait = () => act(async () => new Promise((r) => setTimeout(r, 30)));
+
+    it("shows the cards with no update detected, with prev / next and no refresh", async () => {
+      render(<AppUpdateStack {...none} open features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      expect(front().textContent).toContain("Dark mode");
+      expect(screen.queryByRole("button", { name: "Refresh to get the latest" })).toBeNull();
+      expect(screen.getByRole("button", { name: "got it" })).toBeTruthy();
+      expect(screen.getByRole("button", { name: "next" })).toBeTruthy();
+    });
+
+    it("stays hidden while closed, and shows when `open` turns true", async () => {
+      const { rerender } = render(<AppUpdateStack {...none} open={false} features={FEATURES} />);
+      await wait();
+      expect(document.querySelector("[data-fancy-app-update-stack]")).toBeNull();
+      rerender(<AppUpdateStack {...none} open features={FEATURES} />);
+      await waitFor(() => expect(cards().length).toBe(3));
+    });
+
+    it('"got it" and the close button ask to close through onOpenChange(false)', async () => {
+      const onOpenChange = vi.fn();
+      function Menu() {
+        const [open, setOpen] = useState(true);
+        return (
+          <AppUpdateStack
+            {...none}
+            open={open}
+            onOpenChange={(o) => {
+              onOpenChange(o);
+              setOpen(o);
+            }}
+            features={FEATURES}
+          />
+        );
+      }
+      render(<Menu />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.click(screen.getByRole("button", { name: "got it" }));
+      expect(onOpenChange).toHaveBeenLastCalledWith(false);
+      expect(document.querySelector("[data-fancy-app-update-stack]")).toBeNull();
+      cleanup();
+
+      onOpenChange.mockClear();
+      render(<Menu />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(onOpenChange).toHaveBeenLastCalledWith(false);
+      expect(document.querySelector("[data-fancy-app-update-stack]")).toBeNull();
+    });
+
+    it("dismissLabel changes the words", async () => {
+      render(<AppUpdateStack {...none} open features={FEATURES} dismissLabel="Thanks!" />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      expect(screen.getByRole("button", { name: "Thanks!" })).toBeTruthy();
+    });
+
+    it("with an update ALSO pending, keeps the refresh action -- there is a new build to load", async () => {
+      const onOpenChange = vi.fn();
+      const onDismiss = vi.fn();
+      render(<AppUpdateStack {...detected} open onOpenChange={onOpenChange} onDismiss={onDismiss} features={FEATURES} />);
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Refresh to get the latest" })).not.toBeNull());
+      expect(screen.queryByRole("button", { name: "got it" })).toBeNull();
+
+      // Closing closes both: the on-demand view AND the update notice, or the
+      // close button would appear to do nothing.
+      fireEvent.click(screen.getByRole("button", { name: "Close" }));
+      expect(onOpenChange).toHaveBeenLastCalledWith(false);
+      expect(onDismiss).toHaveBeenCalledTimes(1);
+    });
+
+    it("runs a feature loader when opened, with no update detected", async () => {
+      const load = vi.fn(async () => FEATURES.slice(0, 2));
+      render(<AppUpdateStack {...none} open features={load} />);
+      await waitFor(() => expect(cards().length).toBe(2));
+      expect(load).toHaveBeenCalledTimes(1);
+    });
+
+    it("shows nothing when opened with no cards: there is no news to show", async () => {
+      // Not the plain "Update available" card: no update is pending.
+      const { rerender } = render(<AppUpdateStack {...none} open features={[]} />);
+      await wait();
+      expect(document.querySelector("[data-fancy-app-update-stack]")).toBeNull();
+      // ...and it appears as soon as there are cards to show.
+      rerender(<AppUpdateStack {...none} open features={FEATURES.slice(0, 1)} />);
+      await waitFor(() => expect(cards().length).toBe(1));
+      expect(front().textContent).toContain("Dark mode");
+    });
+
+    it("starts at the first card each time it opens", async () => {
+      function Menu() {
+        const [open, setOpen] = useState(true);
+        return (
+          <>
+            <button onClick={() => setOpen(true)}>whats-new</button>
+            <AppUpdateStack {...none} open={open} onOpenChange={setOpen} features={FEATURES} />
+          </>
+        );
+      }
+      render(<Menu />);
+      await waitFor(() => expect(cards().length).toBe(3));
+      fireEvent.click(screen.getByRole("button", { name: "next" }));
+      expect(front().textContent).toContain("Faster search");
+      fireEvent.click(screen.getByRole("button", { name: "got it" }));
+      fireEvent.click(screen.getByRole("button", { name: "whats-new" }));
+      await waitFor(() => expect(cards().length).toBe(3));
+      expect(front().textContent).toContain("Dark mode");
+    });
+
+    it("render receives whether an update is pending", async () => {
+      render(
+        <AppUpdateStack
+          {...none}
+          open
+          features={FEATURES}
+          render={({ updateAvailable, features }) => <div data-testid="own">{`${features.length}:${updateAvailable}`}</div>}
+        />,
+      );
+      await waitFor(() => expect(screen.getByTestId("own").textContent).toBe("3:false"));
     });
   });
 

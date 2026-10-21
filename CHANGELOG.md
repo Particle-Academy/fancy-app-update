@@ -15,6 +15,61 @@ upgrading.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-21
+
+**BREAKING, for one hour's worth of consumers: the default prev / next words
+are now lowercase `"prev"` / `"next"`** (0.5.0 said `"Previous"` / `"Next"`).
+Only matters if you found the buttons by their text -- a test using
+`getByRole("button", { name: "Next" })`, say. Pass `previousLabel="Previous"`
+/ `nextLabel="Next"` to keep the old words, or find them by
+`data-fancy-app-update-control="previous"` / `"next"`. Nothing else needs doing:
+with `open` unset, the notice shows on a detected update exactly as before.
+
+### Added
+
+- **`open` / `onOpenChange`: open the notice on demand** (fancy-app-update#3),
+  for a "What's New" item in a menu that re-opens the latest cards. `open`
+  shows the stack whether or not an update was detected.
+  - **With no update pending there is no refresh action** -- there is no new
+    build to load. The cards offer **`dismissLabel`** instead (default
+    `"got it"`).
+  - **With an update pending as well, the refresh stays**, because there is a
+    build to load.
+  - **Closing closes everything showing**: it calls `onOpenChange(false)`, and
+    with an update pending it also dismisses that (`onDismiss`). Closing only
+    one would leave the other on screen and the close button would seem to do
+    nothing. With `onOpenChange` not wired, closing still hides it until `open`
+    turns true again.
+  - Each opening starts at the first card. Opened with no cards it shows
+    nothing (the plain "Update available" card would be untrue).
+  - A `features` loader now runs the first time the notice shows -- on a
+    detected update, as before, or on the first `open`.
+  - `render` receives **`updateAvailable`**, so a custom notice can tell the
+    two apart.
+- **A scroll hint**: a faint "scroll" watermark fades in over the front card
+  when a mouse pointer enters a stack of two or more cards, holds, and fades
+  out on its own; it goes away once the person moves through the cards. It
+  takes no clicks (`pointer-events: none`), moves no layout (absolutely
+  positioned) and is `aria-hidden` (the links are the accessible way through).
+  Under `prefers-reduced-motion` it does not fade: it shows briefly, then is
+  gone. **`scrollHint`** takes a string for its words, or `false` to turn it
+  off. Touch pointers get no hint; the wheel is a mouse affordance.
+  - It is a keyframe animation in a `<style>` the notice renders (with the link
+    rules below), not Tailwind, so it needs nothing from your build.
+
+### Changed
+
+- **prev / next are quiet, small lowercase links**, by the owner's direction:
+  12px, no padding or fill, an underline on hover and on keyboard focus. They
+  are still real `<button type="button">`s (react-fancy ghost `Button`s), so
+  Tab reaches them and Enter / Space press them. Button's focus ring now shows
+  for keyboard focus only, not after a click. They carry
+  `data-fancy-app-update-link`. The chevron icons are gone.
+- The count sits between the two links on the left of the card, rather than
+  centred between buttons at either edge.
+- Every card control is now `type="button"`, so a notice inside a `<form>`
+  cannot submit it.
+
 ## [0.5.0] - 2026-10-21
 
 **Nothing to do.** A notice with one card, or the plain hotfix notice, renders

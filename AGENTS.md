@@ -26,8 +26,21 @@ envelope's `RULES.md`.
 - **An update message is optional.** `AppUpdateStack` with no features, or a
   loader that returns nothing or throws, still shows the refresh notice — a
   hotfix has no notes and still needs the reload.
-- **The feature loader runs once, when an update is detected**, never on a page
-  load that sees none.
+- **The feature loader runs once, the first time the notice shows** — an update
+  is detected, or `open` asks for it — never on a page load that sees none and
+  is never opened.
+- **No update pending means no refresh action.** Opened on demand (`open`) with
+  nothing detected, the cards offer `dismissLabel` instead; with an update also
+  pending they keep the refresh. Close closes both, or it would appear inert.
+- **The scroll hint and the prev / next link look live in `STACK_CSS`**, a
+  `<style>` the notice renders, for the same reason as `imageDark`: the hint's
+  fade is a keyframe animation keyed off `data-fancy-app-update-scroll-hint`,
+  the links' underline and pointer-focus ring are attribute selectors. jsdom
+  runs no animations; verify the fade in a browser, freezing it with the Web
+  Animations API (`el.getAnimations()[0]`, `pause()`, set `currentTime`) for a
+  mid-fade frame.
+- **Button has `transition-all`**: read a computed colour or box-shadow 200ms or
+  more after the change, or you read the start of the transition.
 - **A card's image is a full-width header**, so the card's own padding is zeroed
   (`p-0 overflow-hidden` merged into `cardClassName`) and the body pads itself.
   Those two classes are ones react-fancy's dist already contains, so a consumer

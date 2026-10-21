@@ -117,10 +117,12 @@ validators on every deploy):
 ## Say what's new: the stacked notice
 
 `AppUpdateStack` shows the release's **feature cards**, stacked behind each other
-like react-fancy's `Toast.Stack`. With two or more cards, each one has
-**Previous** and **Next** buttons beside its "1 of 3"; scrolling over the stack
-and the arrow keys walk through them too. Every card has a close button and a
-**Refresh to get the latest** button.
+like react-fancy's `Toast.Stack`. With two or more cards, each one has quiet
+**prev** and **next** links beside its "1 of 3"; scrolling over the stack and
+the arrow keys walk through them too, and a faint **scroll** hint says so when
+the mouse arrives. Every card has a close button and a **Refresh to get the
+latest** button. It can also be opened on demand, as a "What's New" view — see
+below.
 
 It is a separate entry built from `@particle-academy/react-fancy` (an optional
 peer, `>=5.41.0`), so the package root stays dependency-free:
@@ -149,15 +151,51 @@ import { AppUpdateStack } from "@particle-academy/fancy-app-update/stack";
   is plain CSS the notice brings with it, so it is right on the first paint,
   follows a live theme toggle, and needs nothing from your Tailwind build.
   `imageAlt` serves both.
-- **`features` can be a loader**, called once, when an update is detected — fetch
-  the notes for the build that just landed:
-  `features={() => fetch("/whats-new.json").then((r) => r.json())}`.
-- **Previous / Next** stop at the ends: Previous is disabled on the first card
-  and Next on the last, so "1 of 3" never steps back to 3. The wheel and the
-  arrow keys still wrap, as `Toast.Stack` does. All three move the same card,
-  and focus stays on the front card when it changes. A single card (the hotfix
-  notice, or a one-feature release) has no buttons.
+- **`features` can be a loader**, called once, the first time the notice shows
+  (an update is detected, or `open` asks) — fetch the notes for the build that
+  just landed: `features={() => fetch("/whats-new.json").then((r) => r.json())}`.
+- **prev / next** are small lowercase links, but real `<button>`s: Tab reaches
+  them and Enter / Space press them. They stop at the ends: prev is disabled on
+  the first card and next on the last, so "1 of 3" never steps back to 3. The
+  wheel and the arrow keys still wrap, as `Toast.Stack` does. All three move the
+  same card, and focus stays on the front card when it changes. A single card
+  (the hotfix notice, or a one-feature release) has no links.
+- **The scroll hint** fades in over the front card when a mouse pointer enters a
+  stack of two or more, holds, and fades out on its own; it goes away once the
+  person moves through the cards. It never takes a click (`pointer-events: none`),
+  never moves the layout, and is hidden from screen readers (the links are the
+  accessible way through). Under `prefers-reduced-motion` it does not fade: it
+  shows briefly and disappears. `scrollHint={false}` turns it off.
 - **Close** hides the notice until the next page load (`onDismiss` tells you).
+
+### What's New: open it on demand
+
+`open` shows the cards whether or not an update was detected — a "What's New"
+item in a menu that re-opens the latest release's cards:
+
+```tsx
+const [open, setOpen] = useState(false);
+
+<MenuItem onClick={() => setOpen(true)}>What's New</MenuItem>
+<AppUpdateStack
+  open={open}
+  onOpenChange={setOpen}
+  features={() => fetch("/whats-new/latest").then((r) => r.json())}
+/>
+```
+
+- **No update pending → no refresh.** There is no new build to load, so the
+  cards offer `dismissLabel` (default `"got it"`) instead.
+- **An update pending as well → the refresh stays**, because there IS a new
+  build to load. `updateAvailable` on the `render` API tells you which.
+- **Closing closes everything showing**: it calls `onOpenChange(false)`, and if
+  an update is pending it dismisses that too (`onDismiss`) — closing one and
+  leaving the other on screen would make the close button seem to do nothing.
+  Without `onOpenChange` wired, closing still hides it until `open` turns true
+  again.
+- **Each opening starts at the first card.** Opened with no cards, it shows
+  nothing: the plain "Update available" card would be untrue.
+- Leave `open` unset and nothing changes: the notice shows on a detected update.
 
 Detection takes the same options as `<AppUpdateAlert>`. Everything a person sees
 can be changed:
@@ -168,15 +206,17 @@ can be changed:
   description="Nothing new, just better."
   refreshLabel="Reload now"            // default "Refresh to get the latest"
   closeLabel="Hide"                    // the close button's accessible name
-  previousLabel="Back"                 // default "Previous"
-  nextLabel="Onward"                   // default "Next"
+  previousLabel="back"                 // default "prev"
+  nextLabel="onward"                   // default "next"
+  scrollHint="scroll to browse"        // default "scroll"; false turns it off
+  dismissLabel="thanks"                // default "got it" (opened on demand, no update)
   color="emerald"                      // react-fancy colour of the refresh button
   position="top"                       // the six positions above, or "inline"
   style={{ top: 72 }}                  // merged over the position: put it anywhere
   className="…" cardClassName="…"      // the notice, and each card
   depth={2} offset={8}                 // cards shown behind, and how far they peek
   renderFeature={(f, { index, count }) => <MyCard feature={f} />}   // a card's content; the controls stay
-  render={({ features, refresh, dismiss }) => <MyNotice />}        // the whole thing
+  render={({ features, refresh, dismiss, updateAvailable }) => <MyNotice />}   // the whole thing
 />
 ```
 
