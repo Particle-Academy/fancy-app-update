@@ -15,6 +15,10 @@ upgrading.
 
 ## [Unreleased]
 
+### Changed
+
+- Test environment: jsdom moved to 30 (devDependency only), dropping the deprecated `whatwg-encoding`. Consumer action: none.
+
 ### Security
 
 - Update Vitest to 4.1.12 for security fixes; dev toolchain only, nothing to do.
