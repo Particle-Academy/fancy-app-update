@@ -29,8 +29,14 @@ export interface UseAppUpdateOptions {
    * compare its `ETag` / `Last-Modified` to the value seen on mount. Zero-config
    * for static SPAs — the host's `index.html` headers change on every deploy.
    * Default: the current document URL.
+   *
+   * Pass an **array** to watch several URLs (e.g. `["/", "/data.json"]`): each
+   * URL's validator is recorded the first time it answers, and an update fires
+   * when ANY recorded validator changes. A URL that fails (network error or a
+   * non-2xx status) or sends no validator is skipped for that look — never a
+   * change, and never in the way of the others. An empty array means the page.
    */
-  pingUrl?: string;
+  pingUrl?: string | readonly string[];
 
   /** Fired once, when an update is first detected. */
   onUpdateAvailable?: () => void;
@@ -57,7 +63,8 @@ export interface AppUpdate {
  *    vs. the deployed one).
  * 3. **ETag** (default) — poll `pingUrl` (the page URL) and compare its
  *    `ETag` / `Last-Modified` to the value on mount. Works for any statically
- *    served SPA with no backend code at all.
+ *    served SPA with no backend code at all. `pingUrl` may be an array
+ *    (`["/", "/data.json"]`): any recorded validator changing is an update.
  *
  * SSR-safe: nothing runs on the server; all polling lives in effects. Polling
  * stops once an update is detected (or after `dismiss()`).
@@ -78,6 +85,16 @@ export function useAppUpdate(options: UseAppUpdateOptions = {}): AppUpdate {
   const dismissedRef = useRef(false);
   const firedRef = useRef(false);
   const baselineEtagRef = useRef<string | null>(null);
+  // Several-URL mode: the validator recorded for each URL, by URL.
+  const baselinesRef = useRef<Map<string, string>>(new Map());
+
+  // An array prop is a new identity every render; key on its contents so the
+  // pollers are not torn down and rebuilt each time the parent renders.
+  const pingList = typeof pingUrl === "string" || pingUrl == null ? null : pingUrl;
+  const pingKey = pingList ? JSON.stringify(pingList) : null;
+  const pingListRef = useRef(pingList);
+  pingListRef.current = pingList;
+  const singlePingUrl = typeof pingUrl === "string" ? pingUrl : undefined;
 
   // Keep latest callbacks without resubscribing the pollers each render.
   const onUpdateRef = useRef(onUpdateAvailable);
@@ -105,8 +122,33 @@ export function useAppUpdate(options: UseAppUpdateOptions = {}): AppUpdate {
       }
     }
 
+    // 3b. Several URLs: any recorded validator changing is an update.
+    const list = pingListRef.current;
+    if (list && list.length > 0) {
+      const baselines = baselinesRef.current;
+      const changed = await Promise.all(
+        list.map(async (u) => {
+          try {
+            const res = await fetch(u, { method: "HEAD", cache: "no-store", credentials: "same-origin" });
+            if (!res.ok) return false; // a failure is never a change
+            const tag = res.headers.get("etag") ?? res.headers.get("last-modified");
+            if (tag == null) return false; // no validator — skip this URL
+            const seen = baselines.get(u);
+            if (seen == null) {
+              baselines.set(u, tag); // first answer: record it, no alert
+              return false;
+            }
+            return tag !== seen;
+          } catch {
+            return false; // network blip — never false-positive
+          }
+        }),
+      );
+      return changed.some(Boolean);
+    }
+
     // 3. ETag / Last-Modified of the page URL.
-    const url = pingUrl ?? window.location.href;
+    const url = singlePingUrl ?? window.location.href;
     try {
       const res = await fetch(url, { method: "HEAD", cache: "no-store", credentials: "same-origin" });
       const tag = res.headers.get("etag") ?? res.headers.get("last-modified");
@@ -119,7 +161,9 @@ export function useAppUpdate(options: UseAppUpdateOptions = {}): AppUpdate {
     } catch {
       return false; // network blip — never false-positive
     }
-  }, [currentVersion, pingUrl]);
+    // pingKey stands in for the array's contents, read through pingListRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentVersion, singlePingUrl, pingKey]);
 
   const runCheck = useCallback(async (): Promise<void> => {
     if (!enabled || dismissedRef.current) return;

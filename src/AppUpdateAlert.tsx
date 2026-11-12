@@ -47,6 +47,7 @@ export interface AppUpdateAlertProps extends UseAppUpdateOptions {
  *
  * ```tsx
  * <AppUpdateAlert />                                                   // ETag default
+ * <AppUpdateAlert pingUrl={["/", "/data.json"]} />                     // any of several URLs
  * <AppUpdateAlert currentVersion={BUILD_ID} latestVersion={() => fetch("/version").then(r => r.text())} />
  * <AppUpdateAlert check={async () => (await api.hasUpdate())} position="bottom" />
  * <AppUpdateAlert render={({ refresh }) => <MyBanner onRefresh={refresh} />} />  // your own UI

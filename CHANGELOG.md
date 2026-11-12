@@ -15,6 +15,20 @@ upgrading.
 
 ## [Unreleased]
 
+### Added
+
+- **`pingUrl` accepts an array of URLs** for the zero-config ETag mode, on both
+  `useAppUpdate` and `<AppUpdateAlert>`: `pingUrl={["/", "/data.json"]}`. Each
+  URL's `ETag` (else `Last-Modified`) is recorded on its first answer, and an
+  update fires when any recorded validator changes. A URL that fails (network
+  error or non-2xx) or sends no validator is skipped on that look, never counted
+  as a change and never in the way of the others; one that is down at first is
+  recorded when it first answers, with no alert. Requests are `HEAD` with
+  `cache: "no-store"` on the existing interval and focus re-checks. An empty
+  array means the page URL. **Consumer action:** none. A single string
+  `pingUrl` makes the same request and decides exactly as before, including
+  that it does not look at the response status.
+
 ### Changed
 
 - **Releases need a lab-run certificate.** `publish.yml` gains a read-only

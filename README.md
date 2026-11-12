@@ -89,6 +89,21 @@ validators on every deploy):
 <AppUpdateAlert pingUrl="/" />   // or a specific URL
 ```
 
+**Watch several URLs** — when a deploy can change your data without touching the
+page (or the other way round), pass an array. Each URL's `ETag` (or, failing
+that, its `Last-Modified`) is recorded on the first look, and the prompt shows
+when **any** of them changes:
+
+```tsx
+<AppUpdateAlert pingUrl={["/", "/data.json"]} />
+```
+
+A URL that fails (network error, non-2xx) or sends no validator is skipped on
+that look: it is never counted as a change and never blocks the others. A URL
+that is down on the first look is recorded the first time it answers, without a
+prompt. Every request is a `HEAD` with `cache: "no-store"`, on the same interval
+and focus re-checks as a single URL.
+
 ## Customize the prompt
 
 ```tsx
@@ -289,7 +304,7 @@ function VersionBar() {
 | `pollOnFocus` | `true` | Also re-check when the tab regains focus |
 | `check` | — | Custom detector → `true` when an update is available |
 | `currentVersion` + `latestVersion` | — | Version compare |
-| `pingUrl` | page URL | ETag/Last-Modified fallback target |
+| `pingUrl` | page URL | ETag/Last-Modified fallback target — a URL, or an array of URLs (any change fires) |
 | `onUpdateAvailable` | — | Fired once on first detection |
 
 Returns `{ updateAvailable, refresh, dismiss, check }`. SSR-safe; polling stops
