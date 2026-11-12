@@ -15,6 +15,8 @@ upgrading.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-11-12
+
 ### Added
 
 - **`pingUrl` accepts an array of URLs** for the zero-config ETag mode, on both
